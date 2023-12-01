@@ -1,0 +1,7 @@
+*
+!.gitignore
+!main.py
+!plugin_pb2_grpc.py
+!plugin_pb2.py
+!plugin_pb2.pyi
+!requirements.txt

@@ -1,0 +1,205 @@
+syntax = "proto3";
+package plugin;
+option go_package = "/pkg/proto";
+
+//Authentication and Authorization
+
+
+message LoadRequest {
+  string launch_params = 1;
+}
+
+enum PluginCapability{
+  NONE = 0;
+  VIRTUAL_FILESYSTEM = 1;
+  ANALYZER = 2;
+  TRANSFORMER = 3;
+}
+message LoadResponse{
+  int32 status = 1;
+  repeated PluginCapability capabilities = 2;
+  string setState = 3;
+  repeated string handlers = 4;
+  bool shouldNegotiate = 5;
+}
+
+enum DataType{
+  NULL = 0;
+  END = 1;
+  STR = 2;
+  INT = 3;
+  DBL = 4;
+  BIN = 5;
+  BOOL = 6;
+
+}
+
+message NegotiateRequest{
+  int32 seq = 1;
+  DataType type = 2;
+  string input = 3;
+}
+message NegotiateResponse{
+  int32 seq = 1;
+  string message = 2;
+  string html = 3;
+  DataType type = 4;
+}
+
+service Negotiator {
+  rpc Negotiate(stream NegotiateRequest) returns (stream NegotiateResponse) {}
+}
+enum MessageType {
+  DYNAMIC = 0;
+  LOAD = 1;
+  ANALYZE = 2;
+  FILE_LS = 3;
+  FILE_READ = 4;
+  SCORE = 5;
+  TRANSFORM = 6;
+  ERROR = 16;
+  TERMINATE = 17;
+}
+
+//File Operations
+message ReadFileRequest{
+  string path = 1;
+  string name = 2;
+  string mime = 3;
+}
+message File{
+  string url = 1;
+  string name = 2;
+  string provider_id = 3;
+  string mime_type = 4;
+  uint64 size = 5;
+
+  string sha256 = 18;
+  string md5 = 19;
+}
+
+enum EntryType {
+  UNKNOWN = 0;
+  FILE = 1;
+  DIRECTORY = 2;
+  COMPRESSED = 3;
+  NO_INDEX = 18;
+}
+message DirectoryEntry {
+  string path = 1;
+  EntryType entry_type = 2;
+  string name = 3;
+  string mime = 4;
+
+  string provider = 36;
+  bool final = 37;
+}
+
+message ListChildrenRequest{
+  string path = 1;
+  int64 requestSize = 2;
+}
+message ListChildrenResponse{
+  repeated DirectoryEntry entry = 1;
+  bool incomplete = 2;
+
+}
+service Plugin{
+  rpc Load(LoadRequest) returns (LoadResponse) {}
+  rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
+}
+service Connector {
+  rpc Ls(stream ListChildrenRequest) returns (stream DirectoryEntry) {}
+  rpc Cat(ReadFileRequest) returns (File) {}
+}
+
+message AnalyzeRequest{
+  File file = 1;
+  string Url = 2;
+}
+
+message AnalyzeFinding{
+  int32 score = 1;
+  string location = 2;
+  string contents = 3;
+  string description = 4;
+}
+message AnalyzeResponse{
+  int32 score = 1;
+  File file = 2;
+
+  repeated AnalyzeFinding findings = 3;
+}
+
+service Analyzer {
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+}
+
+message TransformRequest{
+  File file = 1;
+}
+
+message TransformResponse{
+  File file = 1;
+  string url = 2;
+}
+
+enum TransformEntryType{
+  NOINDEX = 0;
+  STRING = 1;
+  GROUP = 2;
+}
+message TransformEntry{
+  TransformEntryType type = 1;
+  uint64 uid = 2;
+  string contents = 3;
+  repeated TransformEntry children = 4;
+  double correlation = 5;
+
+}
+service Transformer {
+  rpc Transform(TransformRequest) returns (TransformResponse) {}
+}
+//Data Interchange
+
+message Request{
+  int32 id = 1;
+  MessageType type = 2;
+  string pluginState = 3;
+  oneof request {
+    LoadRequest load = 17;
+    ListChildrenRequest ls = 18;
+    ReadFileRequest cat = 19;
+    AnalyzeRequest analyze = 20;
+    TransformRequest transform = 21;
+    TerminateRequest terminate = 22;
+  }
+}
+
+message TerminateRequest{
+  int32 id = 1;
+}
+message TerminateResponse{
+  int32 id = 1;
+}
+message Error{
+  string trace = 1;
+  string message = 2;
+}
+
+
+message Response{
+  int32 id = 1;
+  MessageType type = 2;
+  string pluginState = 3;
+  bool incomplete = 4;
+  oneof response {
+    Error err = 16;
+    LoadResponse load = 17;
+    ListChildrenResponse ls = 18;
+    File cat = 19;
+    AnalyzeResponse analyze = 20;
+    TransformResponse transform = 21;
+    TerminateResponse terminate = 22;
+  }
+}

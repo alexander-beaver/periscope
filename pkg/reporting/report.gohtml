@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}}</title>
+</head>
+<body>
+
+<h1>{{.Title}}</h1>
+<div>
+    {{range .Results}}
+        <div>
+            <h2>{{.File.Name}}</h2>
+            <table>
+                {{range .Findings}}
+                    <tr>
+                        <td>{{.Score}}</td>
+                        <td>{{.Location}}</td>
+                        <td>{{.Contents}}</td>
+                        <td>{{.Description}}</td>
+                    </tr>
+                {{end}}
+            </table>
+
+        </div>
+    {{end}}
+</div>
+
+
+</body>
+</html>
